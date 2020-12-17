@@ -24,12 +24,12 @@
 #define TIM1_PWM_PERIOD							TIM1->ARR
 
 //Inverter Pins
-#define MOS_YH TIM_Channel_3
-#define MOS_GH TIM_Channel_2
-#define MOS_BH TIM_Channel_1
-#define MOS_YL GPIO_Pin_1
-#define MOS_GL GPIO_Pin_0
-#define MOS_BL GPIO_Pin_7
+#define MOS_YH 								TIM_Channel_3
+#define MOS_GH 								TIM_Channel_2
+#define MOS_BH 								TIM_Channel_1
+#define MOS_YL 								GPIO_Pin_1
+#define MOS_GL 								GPIO_Pin_0
+#define MOS_BL 								GPIO_Pin_7
 
 //hall sensor table bit positions
 #define UH	0
@@ -67,6 +67,8 @@ void PMSM_MotorStop(void);
 uint8_t PMSM_MotorSpeedIsOK(void);
 uint8_t	PMSM_GetState(uint8_t SensorsPosition);
 void PMSM_MotorCommutation(uint16_t hallpos);
+void PMSM_MotorLSCommutation(uint16_t hallLSpos);
+void PMSM_MotorLS2Commutation(uint16_t sinTableIndex);
 uint8_t PMSM_MotorIsRun(void);
 void PMSM_MotorSetSpin(uint8_t spin);
 void PMSM_MotorSetRun(void);

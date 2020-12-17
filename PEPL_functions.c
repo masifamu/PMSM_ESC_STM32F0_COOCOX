@@ -393,28 +393,16 @@ void PMSM_SetEngineParameters(void){
 	TIM_SelectOCxM(TIM1, TIM_Channel_2, TIM_OCMode_PWM1);
 	TIM_SelectOCxM(TIM1, TIM_Channel_3, TIM_OCMode_PWM1);
 
-	//TIM_CCxCmd(TIM1, TIM_Channel_1, TIM_CCx_Enable);
-	//TIM_CCxCmd(TIM1, TIM_Channel_2, TIM_CCx_Enable);
-	//TIM_CCxCmd(TIM1, TIM_Channel_3, TIM_CCx_Enable);
-
 	TIM1_PWM_PERIOD=2884;
-	TIM1_CHANNEL_YH=100;
-	TIM1_CHANNEL_GH=200;
-	TIM1_CHANNEL_BH=300;
+	//TIM1_CHANNEL_YH=100;
+	//TIM1_CHANNEL_GH=200;
+	//TIM1_CHANNEL_BH=300;
 
 	//variable control
 	//TIM14 control
 	//TIM16 control
 }
 void PMSM_UpdateEnginePWMWidth(uint16_t pwmWidth){
-	//TIM1_CHANNEL_YH=pwmWidth;
-	//TIM1_CHANNEL_GH=pwmWidth;
-	//TIM1_CHANNEL_BH=pwmWidth;
-
-	//TIM1_CHANNEL_YH=PMSM_SINTABLE[PMSM_SinTableIndex][0];
-	//TIM1_CHANNEL_GH=PMSM_SINTABLE[PMSM_SinTableIndex][1];
-	//TIM1_CHANNEL_BH=PMSM_SINTABLE[PMSM_SinTableIndex][2];
-	//if(++PMSM_SinTableIndex >= PMSM_SINTABLESIZE) PMSM_SinTableIndex=0;
 	PMSM_PWM=pwmWidth;
 }
 
@@ -508,6 +496,44 @@ void PMSM_MotorCommutation(uint16_t hallpos){
 	if (PMSM_STATE[WH] & !PMSM_STATE[WL]) TIM_CCxCmd(TIM1,MOS_BH,TIM_CCx_Enable);//{	toUpdate = CH1; }
 	if (PMSM_STATE[WL] & !PMSM_STATE[WH]) FIO_CLR(GPIOA,MOS_BL);//GPIOA->BRR = 0x0080;//B
 }
+void PMSM_MotorLSCommutation(uint16_t hallLSpos){
+
+	if (PMSM_MotorSpin == PMSM_CW) {
+		memcpy(PMSM_STATE, PMSM_BRIDGE_STATE_FORWARD[hallLSpos], sizeof(PMSM_STATE));
+	}
+	else if(PMSM_MotorSpin == PMSM_CCW){
+		memcpy(PMSM_STATE, PMSM_BRIDGE_STATE_BACKWARD[hallLSpos], sizeof(PMSM_STATE));
+	}
+	// Disable if need
+	if (!PMSM_STATE[UL]) FIO_SET(GPIOB,MOS_YL);//GPIOB->BSRR = 0x0002;//Y
+	if (!PMSM_STATE[VL]) FIO_SET(GPIOB,MOS_GL);//GPIOB->BSRR = 0x0001;//G
+	if (!PMSM_STATE[WL]) FIO_SET(GPIOA,MOS_BL);//GPIOA->BSRR = 0x0080;//B
+	// Enable if need. If previous state is Enabled then not enable again. Else output do flip-flop.
+	if (PMSM_STATE[UL] & !PMSM_STATE[UH]) FIO_CLR(GPIOB,MOS_YL);//GPIOB->BRR = 0x0002;//Y
+	if (PMSM_STATE[VL] & !PMSM_STATE[VH]) FIO_CLR(GPIOB,MOS_GL);//GPIOB->BRR = 0x0001;//G
+	if (PMSM_STATE[WL] & !PMSM_STATE[WH]) FIO_CLR(GPIOA,MOS_BL);//GPIOA->BRR = 0x0080;//B
+}
+
+void PMSM_MotorLS2Commutation(uint16_t sinTableIndex){
+
+	if((sinTableIndex >= 133) & (sinTableIndex <= 187)){
+		FIO_SET(GPIOB,MOS_GL);
+		FIO_SET(GPIOA,MOS_BL);
+		FIO_CLR(GPIOB,MOS_YL);
+	}
+	if((sinTableIndex >= 5) & (sinTableIndex <= 59)){
+		FIO_SET(GPIOB,MOS_YL);
+		FIO_SET(GPIOA,MOS_BL);
+		FIO_CLR(GPIOB,MOS_GL);
+	}
+	if((sinTableIndex >= 69) & (sinTableIndex <= 123)){
+		FIO_SET(GPIOB,MOS_GL);
+		FIO_SET(GPIOB,MOS_YL);
+		FIO_CLR(GPIOA,MOS_BL);
+	}
+
+}
+
 
 void PMSM_MotorSetRun(void) {
 	PMSM_MotorRunFlag = 1;
@@ -618,6 +644,8 @@ void TIM16_IRQHandler(void) {
 		if (PMSM_SinTableIndex > PMSM_SINTABLESIZE-1) {
 			PMSM_SinTableIndex = 0;
 		}
+
+		PMSM_MotorLS2Commutation(PMSM_SinTableIndex);
 	}
 }
 /*..........................................................SIN VALUE UPDATE TIM16 ENDS HERE..................................................................*/
@@ -696,7 +724,9 @@ void EXTI4_15_IRQHandler(void) {
     	// If motor is started then used a block commutation
     	if (PMSM_ModeEnabled == 0) {
     		PMSM_MotorCommutation(PMSM_Sensors);
-    	}
+    	}//else{
+    		//PMSM_MotorLSCommutation(PMSM_Sensors);
+    	//}
 
     	FIO_FLP(GPIOB,YELLOW_LED);//Yellow LED
 
