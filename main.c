@@ -22,7 +22,7 @@ int main(void)
 
 	while(1)
     {
-		FIO_FLP(GPIOA,GPIO_Pin_12);//Blue LED
+		FIO_FLP(GPIOA,BLUE_LED);//Blue LED
 		// Delay
 		for (uint32_t i = 0; i < 0x0FFFFF; i++);
 
@@ -30,9 +30,28 @@ int main(void)
 		USARTSend(("hello\r\n"));
 		USARTSend(TXBUFFER);
 
+		//PMSM_UpdateEnginePWMWidth(100);
 
-		PMSM_UpdateEnginePWMWidth(++count);
-		if(count>=499) count=0;
+
+		if (1) {
+		    // If Motor Is not run
+		    if (PMSM_MotorIsRun() == 0) {
+		    	// Start motor
+		    	// Check Reverse pin
+		    	if (FIO_GET(GPIOA,MOTOR_ROTATION_SELECT_PIN) != 0) {
+		    		// Forward
+		    		PMSM_MotorSetSpin(PMSM_CW);
+		    	}else {
+		    		// Backward
+		    		PMSM_MotorSetSpin(PMSM_CCW);
+		    	}
+		    	PMSM_MotorCommutation(PMSM_HallSensorsGetPosition());
+		    	PMSM_MotorSetRun();
+		    }
+		   	PMSM_SetPWM(100);
+		}else {
+			PMSM_SetPWM(0);
+		}
 
     }
 }
