@@ -23,6 +23,23 @@
 #define TIM1_CHANNEL_YH							TIM1->CCR3
 #define TIM1_PWM_PERIOD							TIM1->ARR
 
+#define PWM_PERIOD								2884
+
+//select throttle/pot for speed control application.
+#define THROTTLE
+//#define POT
+
+#ifdef POT
+#define PMSM_ADC_START 							200
+#define PMSM_ADC_STOP 							50
+#define PMSM_ADC_MAX 							4000
+#endif
+#ifdef THROTTLE
+#define PMSM_ADC_START 							1150
+#define PMSM_ADC_STOP 							1090
+#define PMSM_ADC_MAX 							4000
+#endif
+
 //Inverter Pins
 #define MOS_YH 								TIM_Channel_3
 #define MOS_GH 								TIM_Channel_2
@@ -73,5 +90,6 @@ uint8_t PMSM_MotorIsRun(void);
 void PMSM_MotorSetSpin(uint8_t spin);
 void PMSM_MotorSetRun(void);
 uint16_t PMSM_GetSpeed(void);
+uint16_t PMSM_ADCToPWM(uint16_t ADC_VALUE);
 
 #endif

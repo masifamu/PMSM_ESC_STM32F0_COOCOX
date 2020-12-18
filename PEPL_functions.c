@@ -266,7 +266,7 @@ void PMSM_GPIOInit(void){
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_2;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	/* Configure PA15=F/R as input  */
@@ -393,7 +393,7 @@ void PMSM_SetEngineParameters(void){
 	TIM_SelectOCxM(TIM1, TIM_Channel_2, TIM_OCMode_PWM1);
 	TIM_SelectOCxM(TIM1, TIM_Channel_3, TIM_OCMode_PWM1);
 
-	TIM1_PWM_PERIOD=2884;
+	TIM1_PWM_PERIOD=PWM_PERIOD;
 	//TIM1_CHANNEL_YH=100;
 	//TIM1_CHANNEL_GH=200;
 	//TIM1_CHANNEL_BH=300;
@@ -567,6 +567,23 @@ uint16_t PMSM_GetSpeed(void) {
 	return PMSM_Speed;
 }
 
+// Transform ADC value to value for writing to the timer register
+uint16_t PMSM_ADCToPWM(uint16_t ADC_VALUE) {
+	uint32_t tmp;
+
+	if (ADC_VALUE < PMSM_ADC_STOP) {
+		return 0;
+	} else {
+		if (ADC_VALUE > PMSM_ADC_MAX) {
+			return PWM_PERIOD+1;
+		}
+		else {
+			tmp = (uint32_t)(ADC_VALUE-PMSM_ADC_STOP) * (uint32_t)PWM_PERIOD / (uint32_t)(PMSM_ADC_MAX - PMSM_ADC_START);
+			return (uint16_t) tmp;
+		}
+	}
+}
+
 /*..........................................................PMSM_CONTROL FUNCTIONS END HERE..................................................................*/
 /*..........................................................SPEED TIMER TIM14 STARTS HERE..................................................................*/
 // Initialize TIM14. It is used to calculate the speed
@@ -600,7 +617,8 @@ void TIM14_IRQHandler(void) {
 		if (PMSM_MotorSpeedIsOK()) {
 			PMSM_MotorStop();
 
-			FIO_FLP(GPIOB,GREEN_LED);
+			FIO_SET(GPIOB,GREEN_LED);
+
 		}
 	}
 }
@@ -723,7 +741,7 @@ void EXTI4_15_IRQHandler(void) {
 
     	PMSM_Speed_prev = PMSM_Speed;
     	//calculate the current speed of rotor by getting the counter value of TIM14
-    	PMSM_Speed = TIM14->CNT;//get speed
+    	PMSM_Speed = //TIM14->CNT;//get speed
     	TIM14->CR1|=TIM_CR1_CEN;//enable
     	TIM14->CNT = 0;//set
 
@@ -751,8 +769,8 @@ void EXTI4_15_IRQHandler(void) {
 
 
     	//USARTSend("from EXTI IRQ\r\n");
-    	sniprintf(TXBUFFERF,20,"%d\r\n",PMSM_Speed);
-    	USARTSend(TXBUFFERF);
+    	//sniprintf(TXBUFFERF,20,"%d\r\n",PMSM_Speed);
+    	//USARTSend(TXBUFFERF);
 
     }
 }
