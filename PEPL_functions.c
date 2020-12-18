@@ -516,7 +516,7 @@ void PMSM_MotorLSCommutation(uint16_t hallLSpos){
 
 void PMSM_MotorLS2Commutation(uint16_t sinTableIndex){
 
-	if((sinTableIndex >= 133) & (sinTableIndex <= 187)){
+/*	if((sinTableIndex >= 133) & (sinTableIndex <= 187)){
 		FIO_SET(GPIOB,MOS_GL);
 		FIO_SET(GPIOA,MOS_BL);
 		FIO_CLR(GPIOB,MOS_YL);
@@ -530,6 +530,22 @@ void PMSM_MotorLS2Commutation(uint16_t sinTableIndex){
 		FIO_SET(GPIOB,MOS_GL);
 		FIO_SET(GPIOB,MOS_YL);
 		FIO_CLR(GPIOA,MOS_BL);
+	}
+*/
+	if((sinTableIndex >= 133) & (sinTableIndex <= 187)){
+		FIO_CLR(GPIOB,MOS_YL);
+	}else{
+		FIO_SET(GPIOB,MOS_YL);
+	}
+	if((sinTableIndex >= 5) & (sinTableIndex <= 59)){
+		FIO_CLR(GPIOB,MOS_GL);
+	}else{
+		FIO_SET(GPIOB,MOS_GL);
+	}
+	if((sinTableIndex >= 69) & (sinTableIndex <= 123)){
+		FIO_CLR(GPIOA,MOS_BL);
+	}else{
+		FIO_SET(GPIOA,MOS_BL);
 	}
 
 }
@@ -624,6 +640,9 @@ void TIM16_IRQHandler(void) {
 
 		// If time to enable PMSM mode
 		if (PMSM_ModeEnabled == 0) {
+			//before starting the upper switches make sure that the lower switches are aligned with the PMSM_SiinTableIndex to avoid overshoot.
+			PMSM_MotorLS2Commutation(PMSM_SinTableIndex);
+
 			// Turn PWM outputs for working with sine wave
 			TIM_CCxCmd(TIM1, MOS_YH, TIM_CCx_Enable);
 			TIM_CCxCmd(TIM1, MOS_GH, TIM_CCx_Enable);
