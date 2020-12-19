@@ -35,8 +35,8 @@
 #define PMSM_ADC_MAX 							4000
 #endif
 #ifdef THROTTLE
-#define PMSM_ADC_START 							1150
-#define PMSM_ADC_STOP 							1090
+#define PMSM_ADC_START 							1500
+#define PMSM_ADC_STOP 							1450
 #define PMSM_ADC_MAX 							4000
 #endif
 

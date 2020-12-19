@@ -8,11 +8,13 @@
 #include "adc_dma.h"
 #include "stm32f0xx_adc.h"
 #include "stm32f0xx_dma.h"
+#include "stm32f0Xx_tim.h"
 
 char TXBUFFER[50] = {'\0'};
 extern uint16_t PMSM_Speed;
 extern uint16_t PMSM_Speed_prev;
-
+extern uint8_t PMSM_Sensors;
+extern uint8_t PMSM_SinTableIndex;
 
 
 int main(void)
@@ -29,9 +31,9 @@ int main(void)
 		// Delay
 		//for (uint32_t i = 0; i < 0x0FFFFF; i++);
 
-		sniprintf(TXBUFFER,40,"preSp=%d sp=%d ADC=%d w=%d\r\n",PMSM_Speed_prev,PMSM_Speed,(ADCBuffer[0] & 0xFFF0),PMSM_ADCToPWM((ADCBuffer[0] & 0xFFF0)));
+		//sniprintf(TXBUFFER,40,"ps=%d s=%d T16=%d i=%d w=%d\r\n",PMSM_Speed_prev,PMSM_Speed,(uint16_t)TIM16->ARR,PMSM_SinTableIndex,PMSM_ADCToPWM((ADCBuffer[0] & 0xFFF0)));
 		//USARTSend(("hello\r\n"));
-		USARTSend(TXBUFFER);
+		//USARTSend(TXBUFFER);
 
 		//PMSM_UpdateEnginePWMWidth(100);
 

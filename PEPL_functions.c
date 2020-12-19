@@ -250,6 +250,7 @@ volatile uint8_t PMSM_MotorRunFlag = 0;
 volatile uint8_t PMSM_MotorSpin = PMSM_CW;
 uint8_t PMSM_STATE[6] = {0, 0, 0, 0, 0, 0};
 volatile uint8_t	PMSM_Sensors = 0;
+volatile uint8_t PMSM_Sensors_prev=0;
 volatile uint8_t PMSM_SinTableIndex = 0;
 volatile uint16_t PMSM_PWM = 0;
 volatile uint16_t PMSM_Speed = 0;
@@ -445,7 +446,7 @@ void PMSM_SetPWM(uint16_t PWM)
 }
 
 uint8_t PMSM_MotorSpeedIsOK(void) {
-	return ((PMSM_Speed_prev > 0) & (PMSM_Speed > 0));
+	return ((PMSM_Speed_prev > 800) & (PMSM_Speed > 800));
 }
 
 // Get index in sine table based on the sensor data, the timing and the direction of rotor rotation
@@ -516,33 +517,17 @@ void PMSM_MotorLSCommutation(uint16_t hallLSpos){
 
 void PMSM_MotorLS2Commutation(uint16_t sinTableIndex){
 
-/*	if((sinTableIndex >= 133) & (sinTableIndex <= 187)){
-		FIO_SET(GPIOB,MOS_GL);
-		FIO_SET(GPIOA,MOS_BL);
-		FIO_CLR(GPIOB,MOS_YL);
-	}
-	if((sinTableIndex >= 5) & (sinTableIndex <= 59)){
-		FIO_SET(GPIOB,MOS_YL);
-		FIO_SET(GPIOA,MOS_BL);
-		FIO_CLR(GPIOB,MOS_GL);
-	}
-	if((sinTableIndex >= 69) & (sinTableIndex <= 123)){
-		FIO_SET(GPIOB,MOS_GL);
-		FIO_SET(GPIOB,MOS_YL);
-		FIO_CLR(GPIOA,MOS_BL);
-	}
-*/
-	if((sinTableIndex >= 133) & (sinTableIndex <= 187)){
+	if((sinTableIndex >= 129) & (sinTableIndex <= 191)){
 		FIO_CLR(GPIOB,MOS_YL);
 	}else{
 		FIO_SET(GPIOB,MOS_YL);
 	}
-	if((sinTableIndex >= 5) & (sinTableIndex <= 59)){
+	if((sinTableIndex >= 1) & (sinTableIndex <= 63)){
 		FIO_CLR(GPIOB,MOS_GL);
 	}else{
 		FIO_SET(GPIOB,MOS_GL);
 	}
-	if((sinTableIndex >= 69) & (sinTableIndex <= 123)){
+	if((sinTableIndex >= 65) & (sinTableIndex <= 127)){
 		FIO_CLR(GPIOA,MOS_BL);
 	}else{
 		FIO_SET(GPIOA,MOS_BL);
@@ -585,6 +570,7 @@ uint16_t PMSM_ADCToPWM(uint16_t ADC_VALUE) {
 }
 
 /*..........................................................PMSM_CONTROL FUNCTIONS END HERE..................................................................*/
+
 /*..........................................................SPEED TIMER TIM14 STARTS HERE..................................................................*/
 // Initialize TIM14. It is used to calculate the speed
 void PMSM_SpeedTimerInit(void) {
@@ -656,10 +642,11 @@ void TIM16_IRQHandler(void) {
 	{
 		TIM_ClearITPendingBit(TIM16, TIM_IT_Update);
 
+
 		// If time to enable PMSM mode
 		if (PMSM_ModeEnabled == 0) {
-			//before starting the upper switches make sure that the lower switches are aligned with the PMSM_SiinTableIndex to avoid overshoot.
-			PMSM_MotorLS2Commutation(PMSM_SinTableIndex);
+			//before starting the upper switches make sure that the lower switches are aligned with the PMSM_SinTableIndex to avoid overshoot.
+			//PMSM_MotorLS2Commutation(PMSM_SinTableIndex);
 
 			// Turn PWM outputs for working with sine wave
 			TIM_CCxCmd(TIM1, MOS_YH, TIM_CCx_Enable);
@@ -675,6 +662,7 @@ void TIM16_IRQHandler(void) {
 			TIM1_CHANNEL_GH = (uint16_t)((uint32_t)PMSM_PWM * PMSM_SINTABLE[PMSM_SinTableIndex][1]/255);
 			TIM1_CHANNEL_BH = (uint16_t)((uint32_t)PMSM_PWM * PMSM_SINTABLE[PMSM_SinTableIndex][2]/255);
 		}
+
 
 		// Increment position in sine table
 		PMSM_SinTableIndex++;
@@ -736,42 +724,50 @@ void EXTI4_15_IRQHandler(void) {
     	EXTI_ClearITPendingBit(EXTI_Line6);
     	EXTI_ClearITPendingBit(EXTI_Line7);
 
-
     	PMSM_Sensors=PMSM_HallSensorsGetPosition();
 
-    	PMSM_Speed_prev = PMSM_Speed;
-    	//calculate the current speed of rotor by getting the counter value of TIM14
-    	PMSM_Speed = //TIM14->CNT;//get speed
-    	TIM14->CR1|=TIM_CR1_CEN;//enable
-    	TIM14->CNT = 0;//set
+    	//if(PMSM_Sensors != PMSM_Sensors_prev){
+    	//	PMSM_Sensors_prev=PMSM_Sensors;
+			sniprintf(TXBUFFERF,20,"%d\r\n",PMSM_Sensors);
+			USARTSend(TXBUFFERF);
 
-    	//setting to TIM16
-    	if(PMSM_MotorSpeedIsOK()){
-			TIM16->CNT = 0;
-			TIM16->ARR = PMSM_Speed/32;
-			TIM16->CR1 |= TIM_CR1_CEN;
-    	}
 
-    	// If Hall sensors value is valid
-    	if ((PMSM_Sensors > 0 ) & (PMSM_Sensors < 7)) {
-    		// Do a phase correction
-    		PMSM_SinTableIndex = PMSM_GetState(PMSM_Sensors);
-    	}
+			PMSM_Speed_prev = PMSM_Speed;
+			//calculate the current speed of rotor by getting the counter value of TIM14
+			PMSM_Speed = TIM_GetCounter(TIM14);//TIM14->CNT;//get speed
+			TIM_Cmd(TIM14, ENABLE);//TIM14->CR1|=TIM_CR1_CEN;//enable
+			TIM_SetCounter(TIM14, 0);//TIM14->CNT = 0;//set
 
-    	// If motor is started then used a block commutation
-    	if (PMSM_ModeEnabled == 0) {
-    		PMSM_MotorCommutation(PMSM_Sensors);
-    	}//else{
-    		//PMSM_MotorLSCommutation(PMSM_Sensors);
+			//setting to TIM16
+/*			if(PMSM_MotorSpeedIsOK()){
+				TIM16->CNT = 0;
+				TIM16->ARR = PMSM_Speed/32;
+				TIM16->CR1 |= TIM_CR1_CEN;
+				//USARTSend("from speed okay\r\n");
+			}
+
+			// If Hall sensors value is valid
+			if ((PMSM_Sensors > 0 ) & (PMSM_Sensors < 7)) {
+				// Do a phase correction
+				PMSM_SinTableIndex = PMSM_GetState(PMSM_Sensors);
+				//USARTSend("from hs okay\r\n");
+			}
+*/
+			// If motor is started then used a block commutation
+			if (PMSM_ModeEnabled == 0) {
+				PMSM_MotorCommutation(PMSM_Sensors);
+				//USARTSend("commutation again\r\n");
+			}//else{
+				//PMSM_MotorLSCommutation(PMSM_Sensors);
+			//}
+
+			FIO_FLP(GPIOB,YELLOW_LED);//Yellow LED
+
+
+			//USARTSend("from EXTI IRQ\r\n");
+			//sniprintf(TXBUFFERF,20,"%d\r\n",PMSM_Speed);
+			//USARTSend(TXBUFFERF);
     	//}
-
-    	FIO_FLP(GPIOB,YELLOW_LED);//Yellow LED
-
-
-    	//USARTSend("from EXTI IRQ\r\n");
-    	//sniprintf(TXBUFFERF,20,"%d\r\n",PMSM_Speed);
-    	//USARTSend(TXBUFFERF);
-
     }
 }
 /*..........................................................EXTI ENDS HERE..................................................................*/
